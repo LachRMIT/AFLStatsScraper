@@ -2,7 +2,7 @@ from typing import List
 import re
 import requests
 from bs4 import BeautifulSoup
-from game import Game, Team, Round, Season, Player_Stats, Player
+from src.models.game import Game, Team, Round, Season, Player_Stats, Player
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -30,6 +30,9 @@ class AFLStatScraper:
         self.year = year
     
     def fetch_season(self) -> str:
+        if not self.year:
+            print("No year selected.")
+            return None
         season_url = f"{self.url}seas/{self.year}.html"
         print(f"\nFetching AFL season data from {self.year}")
         try:
@@ -57,7 +60,8 @@ class AFLStatScraper:
             print(f"No stats found for {name}")
             return None
         
-    def scrape_season(self, html: str) -> Season:
+    def scrape_season(self) -> Season:
+        html = self.fetch_season(self.year)
         if not html:
             print(f"No Season data found for {self.year}")
             return None
@@ -99,7 +103,7 @@ class AFLStatScraper:
         
         finals_table = next((table for table in all_tables if "finals" in table.get_text().lower()), None)
         if finals_table:
-            final_round = Round(num_rounds + 1, "Finals")
+            final_round = Round(num_rounds + 1, "Final")
             games = finals_table.find_all_next("table", attrs={
                 "style": "font: 12px Verdana;",
                 "border": "1",
@@ -206,16 +210,39 @@ class AFLStatScraper:
             
             season_stats.append(player_stats)
         return season_stats
+    
+    def scrape_num_rounds(self) -> int:
+        season_html = self.fetch_season()
+        soup = BeautifulSoup(season_html, 'html.parser')
+        
+        all_tables = soup.find_all("table", attrs={
+            "style": "font: 12px Verdana;",
+            "border": "2",
+            "width": "100%"
+        })
+        
+        round_tables = [table for table in all_tables if "round" in table.get_text().lower()]
+        finals_table = next((table for table in all_tables if "finals" in table.get_text().lower()), None)
+        
+        num_rounds = int(round_tables[-1].text.split("Round ")[1].split("Rnd")[0])
+        
+        finals = []
+        finals_games = finals_table.find_all_next("table", attrs={
+            "style": "font: 12px Verdana;",
+            "border": "2",
+            "width": "100%"
+        })
+        
+        for final in finals_games:
+            finals.append(final.text)
+            
+        finals_rounds = len(set(finals))
+
+        return (num_rounds + finals_rounds)
         
         
         
 if __name__ == "__main__":
     
     scraper = AFLStatScraper()
-    scraper.set_year(2025)
-    
-    stats_html = scraper.fetch_stats("Marcus Bontempelli")
-    if (stats_html and len(stats_html) > 100):
-        cleaned_player_stats = scraper.scrape_stats(stats_html)
-    
-    print(len(cleaned_player_stats))
+    scraper.set_year(2024)

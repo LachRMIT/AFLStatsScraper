@@ -7,6 +7,6 @@ It includes class entities relevant to AFL, including teams, players and games.
 
 Below is a visualisation of the current basic database structure:
 
-![Database Structure](db/initial_db_structure.png)
+![Database Structure](docs/initial_db_structure.png)
 
-## Setup
+## NEEDS SETUP + EXAMPLE
