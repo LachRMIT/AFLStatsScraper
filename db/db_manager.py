@@ -1,5 +1,5 @@
 import sqlite3
-from src.models.game import *
+from src.models import *
 from typing import List
 from src.scraper.AFLTablesScraper import AFLTablesScraper
 
@@ -131,19 +131,18 @@ class AFLDBTools:
             self.cursor.execute("INSERT OR IGNORE INTO teams (team_id, name) VALUES (?, ?)", (team_id, name))
         self.conn.commit()
     
-    def populate_season(self):
+    def populate_season(self, season: Season):
         if not self._table_exists('seasons'):
             return None
         try:
             self.cursor.execute("INSERT OR IGNORE INTO seasons (year, num_rounds) VALUES (?, ?)",
-            (self.scraper.year, self.scraper.scrape_num_rounds())
-            )
-            
+            (season.year, len(season)))
             self.conn.commit()
-        except TypeError:
-            print("No year set on scraper object")
+            print(f"Inserted Season {season.year}")
+        except Exception as e:
+            print(f"Failed to populate Season {season.year}: {e}")
             return None
-        
+    
     def populate_finals_types(self):
         if not self._table_exists('final_types'):
             return None
@@ -164,13 +163,19 @@ class AFLDBTools:
             
             self.conn.commit()
     
+    def populate_round(self, round: Round):
+        if not self._table_exists('rounds'):
+            return None
+        try:
+            self.cursor.execute("INSERT OR IGNORE INTO rounds (round_number, year) VALUES (?, ?)",
+            (round.round_value, round.round_year))
+            self.conn.commit()
+            print(f"Inserted Round {round.round_value}, {round.round_year}")
+        except Exception as e:
+            print(f"Failed to populate Round {round.year}: {e}")
+            return None
 
 if __name__ == "__main__":
     
     db = AFLDBTools()
     db.create_tables()
-    
-    db.scraper.set_year(1989)
-    db.populate_season()
-    db.close()
-    

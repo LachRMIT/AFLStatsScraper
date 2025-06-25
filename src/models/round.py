@@ -1,8 +1,9 @@
 class Round:
     
-    def __init__(self, round_value, round_name: str):
+    def __init__(self, round_value, round_name: str, round_year):
         self.round_value = round_value
         self.round_name = round_name
+        self.round_year = round_year
         self.games = []
         
     def __str__(self):

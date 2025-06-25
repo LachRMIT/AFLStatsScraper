@@ -21,7 +21,7 @@ class AFLTablesScraper:
         self.url = self.BASE_URL
         self.current_url = None
         self.session = requests.Session()
-        
+
         self.year = None
         self.current_player = None
         self.current_player_years = []
@@ -86,7 +86,7 @@ class AFLTablesScraper:
         for round_no, round_table in enumerate(round_tables, start=1):
             try:
                 round_name = round_table.find_next().get_text().strip().lower()
-                round = Round(round_no, round_name)
+                round = Round(round_no, round_name, self.year)
                 
                 games_table = round_table.find_next("table", width="100%").find("td", width="85%")
                 games = games_table.find_all("table") if games_table else []
@@ -123,7 +123,7 @@ class AFLTablesScraper:
         
         for final_type, game_tables in finals_grouped.items():
             round_id = ''.join(word[0] for word in final_type.split()).upper()
-            round_obj = Round(round_id, final_type)
+            round_obj = Round(round_id, final_type, self.year)
             self._scrape_games(game_tables, round_obj, is_finals=True)
             if len(round_obj) > 0:
                 season.add_round(round_obj)
@@ -136,7 +136,7 @@ class AFLTablesScraper:
         return season
 
     def _scrape_games(self, games: list, round: Round, is_finals: bool = False):
-        for game_table in games:
+        for game_id, game_table in enumerate(games, start=1):
             try:
                 teams = game_table.find_all("tr")
                 if len(teams) < 2:
@@ -164,6 +164,7 @@ class AFLTablesScraper:
                     final_type = final_type_element.text if final_type_element else None
                 
                 game = Game(self.year, round.round_value, home_team, away_team, Team(winner), margin, final_type)
+                game.set_game_id(game_id)
                 round.add_game(game)
                 
             except Exception as e:
