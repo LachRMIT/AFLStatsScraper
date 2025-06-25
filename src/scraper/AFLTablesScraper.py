@@ -2,14 +2,13 @@ from typing import List
 import re
 import requests
 from bs4 import BeautifulSoup
-from src.models.game import Game, Team, Round, Season, Player_Stats, Player
+
+from src.models import Game, Team, Round, Season, Player_Stats, Player
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-
-
-class AFLStatScraper:
+class AFLTablesScraper:
     BASE_URL = "https://afltables.com/afl/"
     HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -20,6 +19,7 @@ class AFLStatScraper:
 
     def __init__(self):
         self.url = self.BASE_URL
+        self.current_url = None
         self.session = requests.Session()
         
         self.year = None
@@ -34,6 +34,7 @@ class AFLStatScraper:
             print("No year selected.")
             return None
         season_url = f"{self.url}seas/{self.year}.html"
+        self.current_url = season_url
         print(f"\nFetching AFL season data from {self.year}")
         try:
             response = self.session.get(season_url, verify=False, headers=self.HEADERS)
@@ -61,7 +62,8 @@ class AFLStatScraper:
             return None
         
     def scrape_season(self) -> Season:
-        html = self.fetch_season(self.year)
+        html = self.fetch_season()
+        
         if not html:
             print(f"No Season data found for {self.year}")
             return None
@@ -76,9 +78,10 @@ class AFLStatScraper:
             "width": "100%"
         })
         
+        
         round_tables = [table for table in all_tables if "round" in table.get_text().lower()]
         num_rounds = int(round_tables[-1].text.split("Round ")[1].split("Rnd")[0])
-        season_num_games = soup.find("td", colspan="12").text.split("Games: ")[1].split(",")[0]
+        # season_num_games = soup.find("td", colspan="12").text.split("Games: ")[1].split(",")[0]
         
         for round_no, round_table in enumerate(round_tables, start=1):
             try:
@@ -88,7 +91,7 @@ class AFLStatScraper:
                 games_table = round_table.find_next("table", width="100%").find("td", width="85%")
                 games = games_table.find_all("table") if games_table else []
                 
-                self._scrape_games(games, round, round_no)
+                self._scrape_games(games, round)
                 
                 if len(round) > 0:
                     season.add_round(round)
@@ -99,31 +102,41 @@ class AFLStatScraper:
                 print(f"Error processing round {round_no}: {e}")
                 import traceback
                 traceback.print_exc()
-                return
+                return None
         
-        finals_table = next((table for table in all_tables if "finals" in table.get_text().lower()), None)
-        if finals_table:
-            final_round = Round(num_rounds + 1, "Final")
-            games = finals_table.find_all_next("table", attrs={
-                "style": "font: 12px Verdana;",
-                "border": "1",
-                "width": "100%"
-            })
-            
-            self._scrape_games(games, final_round, num_rounds + 1, is_finals=True)
-            
-            if len(final_round) > 0:
-                season.add_round(final_round)
+        finals_games = soup.find("a", attrs={"name": "fin"}).find_next("table").find_all_next("table", attrs={
+            "style": "font: 12px Verdana;",
+            "border": "1",
+            "width": "100%"
+        })
+        
+        finals_grouped = {}
+        
+        for game_table in finals_games:
+            header = game_table.find_previous("b")
+            if not header:
+                continue
+            final_type = header.text.strip()
+            if final_type not in finals_grouped:
+                finals_grouped[final_type] = []
+            finals_grouped[final_type].append(game_table)
+        
+        for final_type, game_tables in finals_grouped.items():
+            round_id = ''.join(word[0] for word in final_type.split()).upper()
+            round_obj = Round(round_id, final_type)
+            self._scrape_games(game_tables, round_obj, is_finals=True)
+            if len(round_obj) > 0:
+                season.add_round(round_obj)
         
         print(f"Successfully scraped.")
         
-        if season.num_games() != int(season_num_games):
-            print("ERROR: Missing Games!")
+        # if season.num_games() != int(season_num_games):
+        #     print("ERROR: Missing Games!")
         
         return season
 
-    def _scrape_games(self, games: list, round: Round, round_value, is_finals: bool = False):
-        for game_id, game_table in enumerate(games, start=1):
+    def _scrape_games(self, games: list, round: Round, is_finals: bool = False):
+        for game_table in games:
             try:
                 teams = game_table.find_all("tr")
                 if len(teams) < 2:
@@ -150,11 +163,11 @@ class AFLStatScraper:
                     final_type_element = game_table.find_previous("b")
                     final_type = final_type_element.text if final_type_element else None
                 
-                game = Game(self.year, round_value, home_team, away_team, Team(winner), margin, final_type)
+                game = Game(self.year, round.round_value, home_team, away_team, Team(winner), margin, final_type)
                 round.add_game(game)
                 
             except Exception as e:
-                print(f"Error parsing game {game_id} in round {round_value}: {e}")
+                print(f"Error parsing game {home_team} v {away_team} in round {round.round_value}: {e}")
                 continue
     
     def scrape_stats(self, html: str) -> List[Player_Stats]:
@@ -243,6 +256,8 @@ class AFLStatScraper:
         
         
 if __name__ == "__main__":
-    
-    scraper = AFLStatScraper()
+
+    scraper = AFLTablesScraper()
     scraper.set_year(2024)
+    season = scraper.scrape_season()
+    print(season)

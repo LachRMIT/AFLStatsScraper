@@ -1,5 +1,5 @@
-from models.player import Player
-from models.team import Team
+from .player import Player
+from .team import Team
 
 class Player_Stats:
     def __init__(self, player: Player, game_id: int, team: Team,

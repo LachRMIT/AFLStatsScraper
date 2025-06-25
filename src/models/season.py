@@ -5,7 +5,7 @@ class Season:
         self.rounds = []
     
     def __str__(self):
-        return f"Season {self.year} - {len(self.rounds)} games"
+        return f"Season {self.year} - {len(self.rounds)} rounds"
     
     def __len__(self):
         return (len(self.rounds))

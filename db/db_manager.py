@@ -1,7 +1,7 @@
 import sqlite3
 from src.models.game import *
 from typing import List
-from AFLStatScraper import AFLStatScraper
+from src.scraper.AFLTablesScraper import AFLTablesScraper
 
 class AFLDBTools:
     """
@@ -9,7 +9,7 @@ class AFLDBTools:
     teams -> seasons -> final_types -> rounds -> games -> players -> player_stats
     """
     def __init__(self):
-        self.scraper = AFLStatScraper()
+        self.scraper = AFLTablesScraper()
         self.conn = sqlite3.connect('db/afl_stats.db')
         self.cursor = self.conn.cursor()
     
