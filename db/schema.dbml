@@ -1,0 +1,60 @@
+// Teams
+Table teams {
+  team_id integer [pk]
+  name text [not null]
+}
+
+// Players
+Table players {
+  player_id integer [pk, increment]
+  name text [not null]
+  current_team_id integer [not null, ref: > teams.team_id]
+}
+
+// Seasons
+Table seasons {
+  year integer [pk]
+  num_rounds integer [not null]
+}
+
+// Rounds
+Table rounds {
+  round_number text [not null]
+  year integer [not null, ref: > seasons.year]
+  
+  indexes {
+    (round_number, year) [pk]
+  }
+}
+
+// Final Types
+Table final_types {
+  final_type_id integer [pk]
+  name text [not null]
+}
+
+// Games
+Table games {
+  game_id text [pk]
+  year integer [not null, ref: > seasons.year]
+  round_number text [not null]
+  home_team_id integer [not null, ref: > teams.team_id]
+  away_team_id integer [not null, ref: > teams.team_id]
+  final_type_id integer [ref: > final_types.final_type_id]
+}
+
+// Player Stats
+Table player_stats {
+  id integer [pk, increment]
+  player_id integer [not null, ref: > players.player_id]
+  game_id text [not null, ref: > games.game_id]
+  team_id integer [not null, ref: > teams.team_id]
+  kicks integer
+  handballs integer
+  disposals integer
+  behinds integer
+  goals integer
+}
+
+// Composite foreign key relationships
+Ref: games.(round_number, year) > rounds.(round_number, year)
