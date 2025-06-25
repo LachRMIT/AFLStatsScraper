@@ -1,3 +1,5 @@
+PRAGMA foreign_keys = ON;
+
 -- Teams
 CREATE TABLE IF NOT EXISTS teams (
     team_id INTEGER PRIMARY KEY,
@@ -20,9 +22,9 @@ CREATE TABLE IF NOT EXISTS seasons (
 
 -- Rounds
 CREATE TABLE IF NOT EXISTS rounds (
-    round_number TEXT NOT NULL,
+    round_value TEXT NOT NULL,
     year INTEGER NOT NULL,
-    PRIMARY KEY (round_number, year),
+    PRIMARY KEY (round_value, year),
     FOREIGN KEY (year) REFERENCES seasons(year)
 );
 
@@ -36,14 +38,14 @@ CREATE TABLE IF NOT EXISTS final_types (
 CREATE TABLE IF NOT EXISTS games (
     game_id TEXT PRIMARY KEY,
     year INTEGER NOT NULL,
-    round_number TEXT NOT NULL,
+    round_value TEXT NOT NULL,
     home_team_id INTEGER NOT NULL,
     away_team_id INTEGER NOT NULL,
     final_type_id INTEGER,
     FOREIGN KEY (year) REFERENCES seasons(year),
+    FOREIGN KEY (round_value, year) REFERENCES rounds(round_value, year),
     FOREIGN KEY (home_team_id) REFERENCES teams(team_id),
     FOREIGN KEY (away_team_id) REFERENCES teams(team_id),
-    FOREIGN KEY (round_number, year) REFERENCES rounds(round_number, year),
     FOREIGN KEY (final_type_id) REFERENCES final_types(final_type_id)
 );
 

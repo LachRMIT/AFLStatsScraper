@@ -19,11 +19,11 @@ Table seasons {
 
 // Rounds
 Table rounds {
-  round_number text [not null]
+  round_value text [not null]
   year integer [not null, ref: > seasons.year]
   
   indexes {
-    (round_number, year) [pk]
+    (round_value, year) [pk]
   }
 }
 
@@ -37,7 +37,7 @@ Table final_types {
 Table games {
   game_id text [pk]
   year integer [not null, ref: > seasons.year]
-  round_number text [not null]
+  round_value text [not null]
   home_team_id integer [not null, ref: > teams.team_id]
   away_team_id integer [not null, ref: > teams.team_id]
   final_type_id integer [ref: > final_types.final_type_id]
@@ -57,4 +57,4 @@ Table player_stats {
 }
 
 // Composite foreign key relationships
-Ref: games.(round_number, year) > rounds.(round_number, year)
+Ref: games.(round_value, year) > rounds.(round_value, year)
