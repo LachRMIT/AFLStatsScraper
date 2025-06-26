@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS games (
     FOREIGN KEY (round_value, year) REFERENCES rounds(round_value, year),
     FOREIGN KEY (home_team_id) REFERENCES teams(team_id),
     FOREIGN KEY (away_team_id) REFERENCES teams(team_id),
+    FOREIGN KEY (winning_team_id) REFERENCES teams(team_id),
     FOREIGN KEY (final_type_id) REFERENCES final_types(final_type_id)
 );
 
