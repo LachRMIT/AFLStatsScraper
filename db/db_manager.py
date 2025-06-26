@@ -3,6 +3,7 @@ from src.models import *
 from typing import List
 from src.scraper.AFLTablesScraper import AFLTablesScraper
 import time
+import logging
 
 class AFLDBTools:
     """
@@ -13,6 +14,10 @@ class AFLDBTools:
         self.scraper = AFLTablesScraper()
         self.conn = sqlite3.connect('db/afl_stats.db')
         self.cursor = self.conn.cursor()
+        self.cursor.execute("PRAGMA foreign_keys = ON")
+    
+    def __del__(self):
+        self.close()
     
     def close(self):
         self.conn.close()
@@ -30,9 +35,8 @@ class AFLDBTools:
         create_statements = content.upper().count("CREATE TABLE")
         
         if self.tables_count() != create_statements:
-            print("Incorrect number of tables detected.")
+            logging.error("Incorrect number of tables detected.")
             self.drop_tables()
-            print("-----------------------------")
             self.create_tables()
     
     def _table_exists(self, table_name):
@@ -42,14 +46,14 @@ class AFLDBTools:
         """, (table_name,))
         exists = self.cursor.fetchone() is not None
         if not exists:
-            print(f"Table '{table_name}' does not exist.")
+            logging.error(f"Table '{table_name}' does not exist.")
         return exists
     
     def create_tables(self):
         with open("db/schema.sql", "r", encoding="utf-8") as f:
             schema_sql = f.read()
             self.cursor.executescript(schema_sql)
-            print("Created tables if not existing.")
+            logging.info("Created tables if not existing.")
         self.conn.commit()
     
     def drop_tables(self):
@@ -65,12 +69,12 @@ class AFLDBTools:
 
         check = input("Type y to confirm DROPPING ALL tables: ")
         if check != "y":
-            print("Left tables alone.")
+            logging.info("Left tables alone.")
             return None
         
         for table in tables:
             self.cursor.execute(f"DROP TABLE IF EXISTS {table};")
-            print(f"DROPPED TABLE IF EXISTED {table}")
+            logging.info(f"DROPPED TABLE IF EXISTED {table}")
         
         self.conn.commit()
     
@@ -111,10 +115,9 @@ class AFLDBTools:
             self.cursor.execute("INSERT OR IGNORE INTO seasons (year, num_rounds) VALUES (?, ?)",
             (season.year, len(season)))
             self.conn.commit()
-            print(f"Inserted Season {season.year}")
-            print(season.num_games())
+            logging.info(f"Inserted Season {season.year}, Number of Games: {season.num_games()}")
         except Exception as e:
-            print(f"Failed to populate Season {season.year}: {e}")
+            logging.error(f"Failed to populate Season {season.year}: {e}")
             return None
     
     def populate_finals_types(self):
@@ -136,9 +139,9 @@ class AFLDBTools:
                     )
                 
                 self.conn.commit()
-            print("Inserted all finals types.")
+            logging.info("Inserted all finals types.")
         except Exception as e:
-            print(f"Failed to insert finals types:  {e}")
+            logging.error(f"Failed to insert finals types:  {e}")
             return None
             
     def populate_game(self, game: Game):
@@ -150,9 +153,7 @@ class AFLDBTools:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", (game.game_id, game.year, game.round, game.home_team.team_id, game.away_team.team_id, game.winning_team.team_id, game.margin, Finals_Types(game.final_type).id))
             self.conn.commit()
         except Exception as e:
-            import traceback
-            print(f"Failed to populate Game : {e}")
-            traceback.print_exc()
+            logging.error(f"Failed to populate Game : {e}")
             return None
     
     def populate_round(self, round: Round):
@@ -162,9 +163,9 @@ class AFLDBTools:
             self.cursor.execute("INSERT OR IGNORE INTO rounds (round_value, year) VALUES (?, ?)",
             (round.round_value, round.round_year))
             self.conn.commit()
-            print(f"Inserted Round {round.round_value}, {round.round_year}")
+            logging.info(f"Inserted Round {round.round_value}, {round.round_year}")
         except Exception as e:
-            print(f"Failed to populate Round {round.round_value}: {e}")
+            logging.error(f"Failed to populate Round {round.round_value}: {e}")
             return None
     
     def populate_rounds_from_season(self, season: Season):
@@ -177,12 +178,16 @@ class AFLDBTools:
                 try:
                     self.populate_game(game)
                 except Exception as e:
-                    print(f"Error with {game}: {e}")
+                    logging.error(f"Error with {game}: {e}")
+    
+    def populate_player(self, player: Player):
+        
+        return None
     
     def populate_db(self) -> None:
         check = input("Are you sure you want to populate the whole database?\nY / N: ")
         if check.lower() != "y":
-            print("Exiting...")
+            logging.info("NO selected. Exiting...")
             return None
         
         self.verify_tables()
@@ -194,12 +199,12 @@ class AFLDBTools:
             try:
                 season = self.scraper.scrape_season()
                 self.populate_season(season)
-                # self.populate_rounds_from_season(season)
+                self.populate_rounds_from_season(season)
                 self.populate_games_from_season(season)
             except Exception as e:
-                print(f"Error with Season {i} : {e}")
+                logging.error(f"Error with Season {i} : {e}")
             time.sleep(0.1)
         self.populate_finals_types()
         
-        
+    
         
