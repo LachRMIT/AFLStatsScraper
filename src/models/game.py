@@ -6,8 +6,8 @@ class Game:
         "GF": "Grand Final"
     }
 
-    def __init__(self, year, round, home_team=None, away_team=None, winning_team=None, margin=None, final_type=None):
-        self.game_id = None
+    def __init__(self, game_id, year, round, home_team, away_team, winning_team, margin, final_type=None):
+        self.game_id = game_id
         self.year = year
         self.round = round
         self.home_team = home_team

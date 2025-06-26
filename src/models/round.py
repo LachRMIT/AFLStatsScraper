@@ -1,3 +1,5 @@
+from .team import Team
+
 class Round:
     
     def __init__(self, round_value, round_name: str, round_year):
@@ -19,8 +21,11 @@ class Round:
         for game in self.games:
             print(game)
     
-    def get_game(self, game_number):
-        return self.games[game_number - 1]
+    def get_game(self, year: int, round: str, home_team: str, away_team: str):
+        for game in self.games:
+            if f"{year}_{str(round)}_{Team(home_team).team_id}_{Team(away_team).team_id}" in game.game_id:
+                return game
+        return None
     
     def get_round_number(self):
         return self.round_no
