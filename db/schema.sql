@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS games (
     round_value TEXT NOT NULL,
     home_team_id INTEGER NOT NULL,
     away_team_id INTEGER NOT NULL,
+    winning_team_id INTEGER NOT NULL,
+    margin INTEGER NOT NULL,
     final_type_id INTEGER,
     FOREIGN KEY (year) REFERENCES seasons(year),
     FOREIGN KEY (round_value, year) REFERENCES rounds(round_value, year),
