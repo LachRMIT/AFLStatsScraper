@@ -2,7 +2,7 @@ from typing import List
 import re
 import requests
 from bs4 import BeautifulSoup
-
+import time
 from src.models import Game, Team, Round, Season, Player_Stats, Player
 
 import urllib3
@@ -25,10 +25,15 @@ class AFLTablesScraper:
         self.year = None
         self.current_player = None
         self.current_player_years = []
+        
+        self.current_html = None
 
     def set_year(self, year):
         self.year = year
     
+    def set_player(self, name):
+        self.current_player = name
+        
     def fetch_season(self) -> str:
         if not self.year:
             print("No year selected.")
@@ -44,8 +49,11 @@ class AFLTablesScraper:
             print(f"No Season data found for {self.year}: {e}")
             return None
         
-    def fetch_stats(self, name: str) -> str:
-        self.current_player = name
+    def fetch_stats(self) -> str:
+        if not self.current_player:
+            print("No player set on scraper.")
+            return None
+        name = self.current_player
         first_name = name.split(" ")[0]
         last_name = name.split(" ")[1]
         stat_url = f"{self.url}stats/players/{name[0].capitalize()}/{first_name}_{last_name}.html"
@@ -62,6 +70,7 @@ class AFLTablesScraper:
             return None
         
     def scrape_season(self) -> Season:
+        scrape_start = time.time()
         html = self.fetch_season()
         
         if not html:
@@ -80,8 +89,6 @@ class AFLTablesScraper:
         
         
         round_tables = [table for table in all_tables if "round" in table.get_text().lower()]
-        num_rounds = int(round_tables[-1].text.split("Round ")[1].split("Rnd")[0])
-        # season_num_games = soup.find("td", colspan="12").text.split("Games: ")[1].split(",")[0]
         
         for round_no, round_table in enumerate(round_tables, start=1):
             try:
@@ -128,10 +135,7 @@ class AFLTablesScraper:
             if len(round_obj) > 0:
                 season.add_round(round_obj)
         
-        print(f"Successfully scraped.")
-        
-        # if season.num_games() != int(season_num_games):
-        #     print("ERROR: Missing Games!")
+        print(f"Scraping finished in {time.time() - scrape_start:.4f} seconds.")
         
         return season
 
@@ -143,8 +147,12 @@ class AFLTablesScraper:
                     continue
                 
                 home_team_row, away_team_row = teams[0], teams[1]
-                
-                result_text = away_team_row.find("td", width="5%").find_next("td").text
+                try:
+                    result_text = away_team_row.find("td", width="5%").find_next("td").text
+                except AttributeError:
+                    result_text = away_team_row.find_all_next("td", recursive=False)[3].text
+                except Exception as e:
+                    print(f"Failed to scrape result_text in {round.round_name} : {e}")
                 if " won by " in result_text:
                     parts = result_text.split(" won by ")
                     winner = parts[0]
@@ -163,28 +171,30 @@ class AFLTablesScraper:
                     final_type_element = game_table.find_previous("b")
                     final_type = final_type_element.text if final_type_element else None
                 
-                game = Game(self.year, round.round_value, home_team, away_team, Team(winner), margin, final_type)
-                game.set_game_id(game_id)
+                game = Game(f"{self.year}_{round.round_value}_{home_team.team_id}_{away_team.team_id}", self.year, round.round_value, home_team, away_team, Team(winner), margin, final_type)
                 round.add_game(game)
-                
             except Exception as e:
-                print(f"Error parsing game {home_team} v {away_team} in round {round.round_value}: {e}")
+                import traceback
+                print(f"Error parsing game {game_id} in round {round.round_value}: {e}")
+                traceback.print_exc()
                 continue
     
-    def scrape_stats(self, html: str) -> List[Player_Stats]:
+    def scrape_stats(self) -> List[Player_Stats]:
         def safe_int(tag):
             text = tag.text.strip()
             return int(text) if text.isdigit() else 0
         
+        html = self.fetch_stats()
         if not html:
             print(f"No Stats data found")
             return None
-        if not self.year:
-            print(f"No year selected for fetching.")
-            return None
-        if not self.current_player:
-            print(f"No current player selected in object.")
-            return None
+    
+        # if not self.year:
+        #     print(f"No year selected for fetching.")
+        #     return None
+        # if not self.current_player:
+        #     print(f"No current player selected in object.")
+        #     return None
         
         soup = BeautifulSoup(html, 'html.parser')
         
@@ -253,12 +263,4 @@ class AFLTablesScraper:
         finals_rounds = len(set(finals))
 
         return (num_rounds + finals_rounds)
-        
-        
-        
-if __name__ == "__main__":
-
-    scraper = AFLTablesScraper()
-    scraper.set_year(2024)
-    season = scraper.scrape_season()
-    print(season)
+    
