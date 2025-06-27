@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS players (
     player_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     current_team_id INTEGER NOT NULL,
+    date_of_birth TEXT NOT NULL,
+    height INTEGER,
+    weight INTEGER,
+    UNIQUE (name, current_team_id, date_of_birth)
     FOREIGN KEY (current_team_id) REFERENCES teams(team_id)
 );
 
