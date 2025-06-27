@@ -103,10 +103,13 @@ class AFLDBTools:
             (17, "West Coast"),
             (18, "Western Bulldogs")
         ]
-        
-        for team_id, name in teams:
-            self.cursor.execute("INSERT OR IGNORE INTO teams (team_id, name) VALUES (?, ?)", (team_id, name))
-        self.conn.commit()
+        try:
+            for team_id, name in teams:
+                self.cursor.execute("INSERT OR IGNORE INTO teams (team_id, name) VALUES (?, ?)", (team_id, name))
+            self.conn.commit()
+            logging.info("Teams table populated.")
+        except Exception as e:
+            logging.error(f"ERROR inserting teams: {e}")
     
     def populate_season(self, season: Season):
         if not self._table_exists('seasons'):
@@ -181,9 +184,18 @@ class AFLDBTools:
                     logging.error(f"Error with {game}: {e}")
     
     def populate_player(self, player: Player):
+        if not self._table_exists('teams'):
+            logging.error("Teams not inserted yet.")
+            return None
+        try:
+            self.cursor.execute("""INSERT OR IGNORE INTO players (name, current_team_id) VALUES (?, ?)""",
+            (player.name, player.current_team_id))
+            self.conn.commit()
+        except sqlite3.IntegrityError as sq:
+            logging.error(f"Error with teams table / team id : {sq}")
+        except Exception as e:
+            logging.error(f"Error inserting {player.name}: {e}")
         
-        return None
-    
     def populate_db(self) -> None:
         check = input("Are you sure you want to populate the whole database?\nY / N: ")
         if check.lower() != "y":
@@ -205,6 +217,3 @@ class AFLDBTools:
                 logging.error(f"Error with Season {i} : {e}")
             time.sleep(0.1)
         self.populate_finals_types()
-        
-    
-        
